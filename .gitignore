@@ -1,0 +1,7 @@
+./*.m3u
+audio-categories.txt
+audio-categories-excluded-from-shuffle.txt
+ignore
+playlists
+playlists.txt
+sounds/static.m4a

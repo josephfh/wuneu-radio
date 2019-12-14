@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# Don't run this without understanding and adapting it for your own needs
+# As much as pi zeros are awesome, run this on a regular computer for tolerable speeds
+
+# In a folder, create more folders full of similar songs, albums, whatever you want
+#
+# Use this script as a guide to create your own, and you'll end up with
+# long AAC files of mono, normalized audio
+
+# NOTE! This script flattens all files in each folder, so use it on copies not your
+# carefully organised regular music folder
+
+# Requires: ffmpeg, ffmpeg-normalize
+# You can install ffmpeg-normalize with pip/pip3, adjust the bin location to match your own
+
+function sanitize_file_name {
+    string=$(echo -n $1 | perl -pe 's/[\?\[\]\/\\=<>:;,''"&\$#*()|~`!{}%+]//g;' -pe 's/[\r\n\t -]+/-/g;')
+    string=${string//[^[:alnum:]]/}
+    string=${string//\'/}
+    string=${string//\\/}
+    echo "${string//./}"
+}
+
+for d in /home/you/folders-of-collected-audio/* ; do
+  basename=`basename "$d"`
+  cleaned=$(sanitize_file_name "$basename")
+  if [[ "$d" != "/home/you/folders-of-collected-audio/$cleaned" ]] ; then
+    mv "$d" "/home/you/folders-of-collected-audio/$cleaned" 2>/dev/null
+  fi
+done
+
+for d in /home/you/folders-of-collected-audio/* ; do
+  if [ -d "$d" ] ; then
+    echo
+    echo "> flattening all subfolders inside $d"
+
+    for folder in "$d"/*; do
+      if [[ -d "$folder" ]]; then
+        foldername="${folder##*/}"
+        if [[ ! "${foldername:0:1}" == "_" ]]; then # no _ at start of name
+          for file in "$d"/"$foldername"/*; do
+            filename="${file##*/}"
+            newfilename="$foldername"_"$filename"
+            if [[ "$file" != "$d"/"$newfilename" ]] ; then
+              mv "$file" "$d"/"$newfilename" 2>/dev/null
+            fi
+          done
+          find "$folder"/ -mindepth 2 -type f -exec mv -t "$folder"/ -i '{}' +
+        fi
+      fi
+    done
+
+    rm /tmp/wuneu-radio-convert-previous.txt 2>/dev/null
+    mv /tmp/wuneu-radio-convert.txt /home/you/wuneu-radio-convert-previous.txt 2>/dev/null
+    rm -rf /home/you/temp 2>/dev/null
+
+    for file in "$d"/*.mp3 ; do
+      mp3val -f "${file}" 2>/dev/null
+    done
+
+    for file in "$d"/*.* ; do
+      ext="${file##*.}"
+      if [[ $ext == "mp3" ]] || [[ $ext == "m4a" ]] || [[ $ext == "wav" ]] || [[ $ext == "flac" ]] ; then
+          base="$(basename "$file" | sed 's/\(.*\)\..*/\1/')"
+          if [[ "$base" == *"converted-"* ]] ; then
+            rm "$file"
+          else
+            cleaned=$(sanitize_file_name "$base")
+            extension="${file##*.}"
+            mv "$file" "${d}/${cleaned}.${extension}"
+            ffmpeg -i "${d}/${cleaned}.${extension}" -c:a pcm_s16le -ar 44100 -ac 1 "${d}/converted-${cleaned}.wav"
+            echo "file '${d}/converted-${cleaned}.wav'" >> /tmp/wuneu-radio-convert.txt
+          fi
+      fi
+    done
+
+    sort /tmp/wuneu-radio-convert.txt > /tmp/wuneu-radio-convert-sorted.txt
+    basename=`basename "$d"`
+    cleaned=$(sanitize_file_name "$basename")
+    echo " > aac for ${cleaned}"
+    echo "Making temporary, mono wavfile"
+    mkdir -p /home/you/radio-processed
+    mkdir -p /home/you/temp
+
+    ffmpeg -f concat -safe 0 -i /tmp/wuneu-radio-convert-sorted.txt -c:a copy "/home/you/temp/${cleaned}.wav"
+    if [ -f "/home/you/temp/${cleaned}.wav" ] ; then
+      ~/.local/bin/ffmpeg-normalize "/home/you/temp/${cleaned}.wav" -c:a aac -b:a 64k -v -o "/home/you/radio-processed/${cleaned}.m4a"
+      rm "/home/you/temp/${cleaned}.wav"
+      if [ -f "/home/you/radio-processed/${cleaned}.m4a" ] ; then
+        mkdir -p "/home/you/radio-success"
+        mv "$d" "/home/you/radio-success/"
+      else
+        echo "${cleaned}.m4a" >> /home/you/wuneu-radio-error.log
+        mkdir -p "/home/you/radio-unsuccess"
+        mv "$d" "/home/you/radio-unsuccess/"
+      fi
+    else
+      echo "error: concatinated WAV file not found"
+    fi
+  fi
+done
