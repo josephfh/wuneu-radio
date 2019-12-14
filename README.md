@@ -94,7 +94,7 @@ the duration (in seconds) at the top of _wuneu-radio.py_
 
 ## Tips
 
-If you're frankensteining this into an old mono radio (just the one speaker). convert your audio to mono and get more from your
+If you're frankensteining this into an old mono radio (just the one speaker) convert your audio to mono and get more from your
 SD card's storage.
 
 I have used _ffmpeg_ and _ffmpeg-normalize_. Checkout _example-scripts/convert-music-folders.sh.example_ if you want to automate
