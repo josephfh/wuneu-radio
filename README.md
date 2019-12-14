@@ -19,6 +19,13 @@
     ```chmod +x ./setup-pi.sh```
 11. Run the setup script
     ```./setup-pi.sh```
+12. Wait a long time for everything to install.
+13. Remove the USB hub. Unplug the HDMI. Pulg the USB soundcard in with the simple USB to micro USB adapter.
+14. Add the GPIO wires to the pins (carefully!) and connect the soundcard to your amp board and speaker.
+
+If nothing happens, you may have different hardware from the setup I've used. The machine name of the USB
+soundcard is hardcodeed in the setup-pi.sh script. You may have to investigate on a fresh copy of Rasbpian Lite
+to find out what the differences are.
 
 ## What this is
 
@@ -87,10 +94,8 @@ Place the file in the _sounds_ folder and rename to _static.m4a_
 
 ## Startup audio
 
-Initiating the three mplayer processes on a Pi Zero takes exactly _one handful_ of seconds. After a the 1 minute silent wait for
-Rasbian to load, pulseaudio to start etc, you can reward your patient radio listener with a startup track. I've included
-one in this project that you will either find amusing or a little too creepy. You can replace it with your own, and update
-the duration (in seconds) at the top of _wuneu-radio.py_
+Initiating the three mplayer processes on a Pi Zero takes exactly _one handful_ of seconds. After a the 30 second silent wait for
+Rasbian to load pulseaudio etc., you can reward your patient radio listener with a startup track. You can replace it with your own, and update the duration (in seconds) at the top of _wuneu-radio.py_
 
 ## Tips
 
