@@ -43,6 +43,7 @@ sudo apt install -y \
     autoconf-archive \
     automake \
     build-essential \
+    ffmpeg \
     git \
     libtool \
     mplayer \
@@ -104,8 +105,6 @@ sudo cp bindings/python/.libs/gpiod.a /usr/local/lib/python3.?/dist-packages/
 
 mkdir -p /home/pi/.mplayer
 mkdir -p /home/pi/ambient-tracks
-mkdir -p /home/pi/music
-mkdir -p /home/pi/playlists
 
 echo "lirc=no" >> /home/pi/.mplayer/config
 
@@ -1032,7 +1031,7 @@ echo "Downloading some example FM static noise from https://www.youtube.com/watc
 echo "Please make sure you respect the copyright of this video if you do not replace it with"
 echo "your own static sound."
 
-youtube-dl -f 140 --id qcDxVQLoQyk -o /home/pi/wuneu-radio/sounds/static.m4a
+youtube-dl -f 140 https://www.youtube.com/watch?v=qcDxVQLoQyk -o /home/pi/wuneu-radio/sounds/static.m4a
 
 #####
 
