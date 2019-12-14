@@ -75,6 +75,24 @@ You'll probably want to use a combined USB/ethernet micro USB hub to SSH in and 
 
 Detects a user pressing and turning a KY040 rotary encoder wired to the Pi's GPIO using libgpiod.
 
+### GPIO wiring
+
+| Pin   |           | Connected to        |
+| ----- |:---------:| -------------------:|
+| 1     | 3.3v      | Rotary   +          |
+| 6     | Ground    | Rotary   GND        |
+| 17    | 3.3v      | Toggle stitch       |
+| 29    | GPIO5     | Rotary   CLK        |
+| 31    | GPIO6     | Rotary   DT         |
+| 33    | GPIO13    | Rotary   SW         |
+| 36    | GPIO16    | Toggle stitch       |
+
+I reused one of the toggle switches on my radio's front panel. Now when pressed it turns on a 5v LED light
+and tells the wuneu-radio.py via GPIO16 to toggle between music and ambient tracks (which works for me as
+a 'night time' mode). You can of course rewrite this script for more or fewer switches. You'll see I have
+one function to handle_user_events() which runs on any of the gpio offsets the script is set to monitor
+(currently just gpio_offsets=[5, 6, 13, 16])
+
 ## Requirements
 
 * A micro SD card large enough and all or your hours of audio

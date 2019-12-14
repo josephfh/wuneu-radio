@@ -1002,11 +1002,12 @@ sudo systemctl mask console-setup.service
 sudo systemctl mask hciuart.service
 sudo systemctl mask keyboard-setup.service
 sudo systemctl mask ntp.service
-sudo systemctl mask systemd-timesyncd.service
 sudo systemctl mask raspi-config.service
 sudo systemctl mask serial-getty@ttyAMA0.service
+sudo systemctl mask ssh.service
 sudo systemctl mask systemd-journal-flush.service
 sudo systemctl mask systemd-journald.service
+sudo systemctl mask systemd-timesyncd.service
 sudo systemctl mask triggerhappy.service
 sudo systemctl mask wifi-country.service
 
