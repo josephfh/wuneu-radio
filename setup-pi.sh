@@ -15,7 +15,7 @@ echo
 model=$(cat /proc/device-tree/model)
 echo "This model is $model"
 
-if [[ "$model" == "w" ]] ; then
+if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
     echo
     echo "This is a Pi Zero W."
     echo "The assumption is you want to use the wifi. Networking features will not be disabled by the script so you can"
@@ -24,7 +24,7 @@ if [[ "$model" == "w" ]] ; then
     ping -c4 google.com > /dev/null
     if [ $? != 0 ]
     then
-        echo "Cannot reach the internet. Please connect to your wifi using the Raspian config"
+        echo "Cannot reach the internet. Please connect to your wifi using the Raspian config."
         echo "Run: sudo raspi-config"
         echo
         exit 2
@@ -36,8 +36,7 @@ if [[ "$model" == "w" ]] ; then
     echo "Enter the network gateway: (e.g. 192.168.1.1)"
     read -p "$gateway"
     echo
-
-sudo bash -c "cat > /etc/dhcpcd.conf" << EOT
+    sudo bash -c "cat > /etc/dhcpcd.conf" << EOT
 # A sample configuration for dhcpcd.
 # See dhcpcd.conf(5) for details.
 
@@ -86,7 +85,7 @@ static routers=$gateway
 static domain_name_servers=8.8.8.8
 EOT
 
-elif [[ "$model" != "z" ]] ; then
+elif [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     echo "You are not running this script on a Pi Zero. Exiting."
     exit 2
 ]]
@@ -1252,7 +1251,7 @@ sudo systemctl mask triggerhappy.service
 sudo apt-get -y remove --purge busybox-syslogd
 sudo apt-get -y remove --purge busybox
 
-if [[ "$model" != "z" ]] ; then
+if [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     sudo apt remove -y --purge dhcpcd5
     sudo apt remove -y --purge ifupdown
     sudo apt remove -y --purge isc-dhcp-client isc-dhcp-common
