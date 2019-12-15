@@ -79,6 +79,16 @@ echo "your own static sound."
 
 youtube-dl -f 140 https://www.youtube.com/watch?v=qcDxVQLoQyk -o /home/pi/wuneu-radio/sounds/static.m4a
 
+
+mkdir -p /home/pi/ambient-tracks
+
+echo
+echo "Downloading some example ambient noise from https://www.youtube.com/watch?v=t6_LYn4_JA4"
+echo "Please make sure you respect the copyright of this video if you do not replace it with"
+echo "your own ambient tracks."
+
+youtube-dl -f 140 https://www.youtube.com/watch?v=t6_LYn4_JA4 -o /home/pi/ambient-tracks/bird-song.m4a
+
 #####
 
 build_dir=`mktemp -d /tmp/libgpiod.XXXX`
@@ -123,7 +133,6 @@ sudo cp bindings/python/.libs/gpiod.a /usr/local/lib/python3.?/dist-packages/
 #####
 
 mkdir -p /home/pi/.mplayer
-mkdir -p /home/pi/ambient-tracks
 
 echo "lirc=no" >> /home/pi/.mplayer/config
 
