@@ -90,6 +90,13 @@ echo "your own ambient tracks."
 youtube-dl -f 140 https://www.youtube.com/watch?v=t6_LYn4_JA4 -o /home/pi/ambient-tracks/bird-song.m4a
 
 echo
+echo "Downloading some example ambient noise from https://www.youtube.com/watch?v=bhWJF9FlBqM"
+echo "Please make sure you respect the copyright of this video if you do not replace it with"
+echo "your own ambient tracks."
+
+youtube-dl -f 140 https://www.youtube.com/watch?v=bhWJF9FlBqM -o /home/pi/ambient-tracks/forest-rain.m4a
+
+echo
 echo "Downloading some example ambient noise from https://www.youtube.com/watch?v=ElU8g7xi6ws"
 echo "Please make sure you respect the copyright of this video if you do not replace it with"
 echo "your own ambient tracks."
