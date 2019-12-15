@@ -11,6 +11,89 @@ echo "In short: this will permanently modify Raspian on this card."
 echo
 echo "Only use this script on a freshly made Raspbian Buster Lite card on your Pi Zero!"
 echo
+
+model=$(cat /proc/device-tree/model)
+echo "This model is $model"
+
+if [[ "$model" == "w" ]] ; then
+    echo
+    echo "This is a Pi Zero W."
+    echo "The assumption is you want to use the wifi. Networking features will not be disabled by the script so you can"
+    echo "SSH in via your desired static IP."
+    echo
+    ping -c4 google.com > /dev/null
+    if [ $? != 0 ]
+    then
+        echo "Cannot reach the internet. Please connect to your wifi using the Raspian config"
+        echo "Run: sudo raspi-config"
+        echo
+        exit 2
+    fi
+    echo
+    echo "Enter the desired static IP address: (e.g. 192.168.1.249)"
+    read -p "$ip"
+    echo
+    echo "Enter the network gateway: (e.g. 192.168.1.1)"
+    read -p "$gateway"
+    echo
+
+sudo bash -c "cat > /etc/dhcpcd.conf" << EOT
+# A sample configuration for dhcpcd.
+# See dhcpcd.conf(5) for details.
+
+# Allow users of this group to interact with dhcpcd via the control socket.
+#controlgroup wheel
+
+# Inform the DHCP server of our hostname for DDNS.
+hostname
+
+# Use the hardware address of the interface for the Client ID.
+clientid
+# or
+# Use the same DUID + IAID as set in DHCPv6 for DHCPv4 ClientID as per RFC4361.
+# Some non-RFC compliant DHCP servers do not reply with this set.
+# In this case, comment out duid and enable clientid above.
+#duid
+
+# Persist interface configuration when dhcpcd exits.
+persistent
+
+# Rapid commit support.
+# Safe to enable by default because it requires the equivalent option set
+# on the server to actually work.
+option rapid_commit
+
+# A list of options to request from the DHCP server.
+option domain_name_servers, domain_name, domain_search, host_name
+option classless_static_routes
+# Respect the network MTU. This is applied to DHCP routes.
+option interface_mtu
+
+# Most distributions have NTP support.
+#option ntp_servers
+
+# A ServerID is required by RFC2131.
+require dhcp_server_identifier
+
+# Generate SLAAC address using the Hardware Address of the interface
+#slaac hwaddr
+# OR generate Stable Private IPv6 Addresses based from the DUID
+slaac private
+
+interface wlan0
+static ip_address=$ip
+static routers=$gateway
+static domain_name_servers=8.8.8.8
+EOT
+
+elif [[ "$model" != "z" ]] ; then
+    echo "You are not running this script on a Pi Zero. Exiting."
+    exit 2
+]]
+
+exit
+
+echo
 echo "Not tested on Pi Zero W models (the ones with wi-fi)"
 echo
 echo "Type OK to continue:"
@@ -222,8 +305,37 @@ EOT
 
 #####
 
+
+#####
+
+sudo bash -c "cat > /etc/systemd/system/wuneu-radio-autostart.service" << EOT
+[Unit]
+Description=autostart
+After=local-fs.target
+
+[Service]
+ExecStart=/home/pi/autostart.sh
+
+[Install]
+WantedBy=multi-user.target
+EOT
+
+#####
+
+cat <<EOF > /home/pi/autostart.sh
+#!/bin/bash
+sudo chmod 777 /tmp
+EOF
+
+#####
+
+chmod +x /home/pi/autostart.sh
+
 sudo systemctl --system enable pulseaudio.service
 sudo systemctl --system start pulseaudio.service
+
+sudo systemctl enable wuneu-radio-autostart.service
+sudo systemctl start wuneu-radio-autostart.service
 
 sudo systemctl enable boot-sound.service
 sudo systemctl start boot-sound.service
@@ -1009,7 +1121,7 @@ disable_splash=1
 dtparam=act_led_activelow=on
 dtparam=act_led_trigger=none
 dtparam=audio=off
-dtparam=watchdog=on
+dtparam=watchdog=off
 gpu_mem=32
 EOT
 
@@ -1037,32 +1149,124 @@ EOT
 
 #####
 
+sudo rm -rf /var/lib/dhcp /var/lib/dhcpcd5 /var/spool /etc/resolv.conf
+sudo ln -s /tmp /var/lib/dhcp
+sudo ln -s /tmp /var/lib/dhcpcd5
+sudo ln -s /tmp /var/spool
+sudo touch /tmp/dhcpcd.resolv.conf
+sudo ln -s /tmp/dhcpcd.resolv.conf /etc/resolv.conf
+
+sudo rm /var/lib/systemd/random-seed
+sudo ln -s /tmp/random-seed /var/lib/systemd/random-seed
+
+#####
+
+sudo bash -c "cat > /lib/systemd/system/systemd-random-seed.service" << EOT
+#  SPDX-License-Identifier: LGPL-2.1+
+#
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Load/Save Random Seed
+Documentation=man:systemd-random-seed.service(8) man:random(4)
+DefaultDependencies=no
+RequiresMountsFor=/var/lib/systemd/random-seed
+Conflicts=shutdown.target
+After=systemd-remount-fs.service
+Before=sysinit.target shutdown.target
+ConditionVirtualization=!container
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/bin/echo "" >/tmp/random-seed
+ExecStart=/lib/systemd/systemd-random-seed load
+ExecStop=/lib/systemd/systemd-random-seed save
+TimeoutSec=30s
+
+EOT
+
+#####
+
+sudo bash -c "cat > /etc/bash.bashrc" << EOT
+# System-wide .bashrc file for interactive bash(1) shells.
+[ -z "$\PS1" ] && return
+shopt -s checkwinsize
+if [ -z "\${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=\$(cat /etc/debian_chroot)
+fi
+if ! [ -n "\${SUDO_USER}" -a -n "\${SUDO_PS1}" ]; then
+  PS1='\${debian_chroot:+(\$debian_chroot)}\u@\h:\w\\$ '
+fi
+if [ -x /usr/lib/command-not-found -o -x /usr/share/command-not-found/command-not-found ]; then
+	function command_not_found_handle {
+	        # check because c-n-f could've been removed in the meantime
+                if [ -x /usr/lib/command-not-found ]; then
+		   /usr/lib/command-not-found -- "\$1"
+                   return \$?
+                elif [ -x /usr/share/command-not-found/command-not-found ]; then
+		   /usr/share/command-not-found/command-not-found -- "\$1"
+                   return \$?
+		else
+		   printf "%s: command not found\n" "\$1" >&2
+		   return 127
+		fi
+	}
+fi
+set_bash_prompt() {
+    fs_mode=\$(mount | sed -n -e "s/^\/dev\/.* on \/ .*(\(r[w|o]\).*/\1/p")
+    PS1='\[\033[01;32m\]\u@\h\${fs_mode:+(\$fs_mode)}\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\\$ '
+}
+alias ro='sudo mount -o remount,ro / ; sudo mount -o remount,ro /boot'
+alias rw='sudo mount -o remount,rw / ; sudo mount -o remount,rw /boot'
+PROMPT_COMMAND=set_bash_prompt
+EOT
+
+#####
+
+sudo bash -c "cat > /etc/bash.bash_logout" << EOT
+mount -o remount,ro /
+mount -o remount,ro /boot
+EOT
+
+###
+
 sudo systemctl mask apt-daily.service
 sudo systemctl mask avahi-daemon.service
 sudo systemctl mask console-setup.service
+sudo systemctl mask dphys-swapfile.service
 sudo systemctl mask hciuart.service
 sudo systemctl mask keyboard-setup.service
-sudo systemctl mask ntp.service
 sudo systemctl mask raspi-config.service
 sudo systemctl mask serial-getty@ttyAMA0.service
-sudo systemctl mask ssh.service
 sudo systemctl mask systemd-journal-flush.service
 sudo systemctl mask systemd-journald.service
 sudo systemctl mask systemd-timesyncd.service
 sudo systemctl mask triggerhappy.service
-sudo systemctl mask wifi-country.service
 
-sudo apt remove -y --purge dhcpcd5
-sudo apt remove -y --purge ifupdown
-sudo apt remove -y --purge isc-dhcp-client isc-dhcp-common
+sudo apt-get -y remove --purge busybox-syslogd
+sudo apt-get -y remove --purge busybox
 
-sudo systemctl mask dhcpcd.service
-sudo systemctl mask dphys-swapfile.service
-sudo systemctl mask networking.service
+if [[ "$model" != "z" ]] ; then
+    sudo apt remove -y --purge dhcpcd5
+    sudo apt remove -y --purge ifupdown
+    sudo apt remove -y --purge isc-dhcp-client isc-dhcp-common
+    sudo systemctl mask dhcpcd.service
+    sudo systemctl mask networking.service
+    sudo systemctl mask ntp.service
+    sudo systemctl mask rpi-eeprom-update
+    sudo systemctl mask ssh.service
+    sudo systemctl mask wifi-country.service
+fi
 
 #####
 
-echo "Complete. This Pi Zero will shut down in 30 seconds."
+echo "Complete. This Pi will shut down in 30 seconds."
 
 sleep 30
 
