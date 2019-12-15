@@ -1037,6 +1037,8 @@ cp -r /home/pi/wuneu-radio/example-music /home/pi/music
 
 /home/pi/wuneu-radio/generate-playlists-basic.sh
 
-echo "Complete. This Pi Zero will now shut down."
+echo "Complete. This Pi Zero will shut down in 30 seconds."
+
+sleep 30
 
 sudo shutdown 0
