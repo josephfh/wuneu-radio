@@ -12,7 +12,7 @@ echo
 echo "Only use this script on a freshly made Raspbian Buster Lite card on your Pi Zero!"
 echo
 
-model=$(cat /proc/device-tree/model)
+model=$(cat /proc/device-tree/model 1>&2 /dev/null)
 echo "This model is $model"
 
 if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
@@ -84,16 +84,13 @@ static ip_address=$ip
 static routers=$gateway
 static domain_name_servers=8.8.8.8
 EOT
+    sudo systemctl enable ssh
 
 elif [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     echo "You are not running this script on a Pi Zero. Exiting."
     exit 2
-]]
+fi
 
-exit
-
-echo
-echo "Not tested on Pi Zero W models (the ones with wi-fi)"
 echo
 echo "Type OK to continue:"
 
@@ -301,9 +298,6 @@ User=pi
 [Install]
 WantedBy=multi-user.target
 EOT
-
-#####
-
 
 #####
 
@@ -1237,15 +1231,12 @@ EOT
 
 sudo systemctl mask apt-daily.service
 sudo systemctl mask avahi-daemon.service
-sudo systemctl mask console-setup.service
 sudo systemctl mask dphys-swapfile.service
 sudo systemctl mask hciuart.service
 sudo systemctl mask keyboard-setup.service
-sudo systemctl mask raspi-config.service
 sudo systemctl mask serial-getty@ttyAMA0.service
 sudo systemctl mask systemd-journal-flush.service
 sudo systemctl mask systemd-journald.service
-sudo systemctl mask systemd-timesyncd.service
 sudo systemctl mask triggerhappy.service
 
 sudo apt-get -y remove --purge busybox-syslogd
@@ -1255,17 +1246,28 @@ if [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     sudo apt remove -y --purge dhcpcd5
     sudo apt remove -y --purge ifupdown
     sudo apt remove -y --purge isc-dhcp-client isc-dhcp-common
+    sudo systemctl mask console-setup.service
     sudo systemctl mask dhcpcd.service
     sudo systemctl mask networking.service
     sudo systemctl mask ntp.service
+    sudo systemctl mask raspi-config.service
     sudo systemctl mask rpi-eeprom-update
     sudo systemctl mask ssh.service
+    sudo systemctl mask systemd-timesyncd.service
     sudo systemctl mask wifi-country.service
+else
+    echo
+    echo "From your computer run:"
+    echo "ssh-copy-id pi@$ip"
+    echo
+    echo "This will copy your public SSH key to the Pi. You can then ssh in with"
+    echo "ssh pi@$ip"
+    echo
 fi
 
 #####
 
-echo "Complete. This Pi will shut down in 30 seconds."
+echo "Setup complete. This Pi will shut down in 30 seconds."
 
 sleep 30
 
