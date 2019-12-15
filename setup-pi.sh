@@ -56,7 +56,28 @@ sudo apt install -y \
     vim \
     wget
 
+#####
+
+echo "Installing youtube-dl"
+sudo curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl
+sudo chmod a+rx /usr/local/bin/youtube-dl
+
+#####
+
 git clone https://github.com/josephfh/wuneu-radio.git /home/pi/wuneu-radio
+
+cp -r /home/pi/wuneu-radio/example-music /home/pi/music
+
+/home/pi/wuneu-radio/generate-playlists-basic.sh
+
+#####
+
+echo
+echo "Downloading some example FM static noise from https://www.youtube.com/watch?v=qcDxVQLoQyk"
+echo "Please make sure you respect the copyright of this video if you do not replace it with"
+echo "your own static sound."
+
+youtube-dl -f 140 https://www.youtube.com/watch?v=qcDxVQLoQyk -o /home/pi/wuneu-radio/sounds/static.m4a
 
 #####
 
@@ -1017,25 +1038,6 @@ sudo systemctl mask dphys-swapfile.service
 sudo systemctl mask networking.service
 
 #####
-
-echo "Installing youtube-dl"
-sudo curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl
-sudo chmod a+rx /usr/local/bin/youtube-dl
-
-#####
-
-echo
-echo "Downloading some example FM static noise from https://www.youtube.com/watch?v=qcDxVQLoQyk"
-echo "Please make sure you respect the copyright of this video if you do not replace it with"
-echo "your own static sound."
-
-youtube-dl -f 140 https://www.youtube.com/watch?v=qcDxVQLoQyk -o /home/pi/wuneu-radio/sounds/static.m4a
-
-#####
-
-cp -r /home/pi/wuneu-radio/example-music /home/pi/music
-
-/home/pi/wuneu-radio/generate-playlists-basic.sh
 
 echo "Complete. This Pi Zero will shut down in 30 seconds."
 
