@@ -25,6 +25,7 @@ files=`cat /tmp/playlists.txt`
 for line in $files; do
     fbasename=`basename "$line"`
     echo "> $songindex. $fbasename <"
+    mkdir -p /home/pi/playlists
     echo "$file" > "/home/pi/playlists/$songindex.m3u"
     cat /tmp/playlists.txt | shuf >> "/home/pi/playlists/$songindex.m3u"
     ((songindex++))
