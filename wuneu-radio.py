@@ -266,6 +266,9 @@ def startup():
     global lights_on
     global song_count
 
+    os.system('/usr/bin/aplay /home/pi/wuneu-radio/sounds/wuneu-radio-intro-single-note.wav')
+    time.sleep(1)
+
     startup_playlist()
 
     try:
