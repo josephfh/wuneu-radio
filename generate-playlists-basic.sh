@@ -5,7 +5,8 @@ rm -rf ~/playlists/* 2> /dev/null
 MUSIC_DIR=/home/pi/music/*
 songindex=0
 
-echo "Creating basic playlists. Once you've uploaded music you may want to use a script which groups music be date or genre."
+echo "Creating basic playlists. Once you've uploaded music you may want to extend this script to"
+echo "group and shuffle music according to their date or genre."
 
 echo "Scanning music"
 echo "" > /tmp/playlists.txt
