@@ -130,13 +130,16 @@ EOT
     sudo systemctl restart networking
 fi
 
-ping -c4 google.com > /dev/null
-if [ $? != 0 ]
-then
-    echo "Cannot reach the internet. Please check your settings."
-    echo
-    exit 2
-fi
+while :
+do
+    ping -c4 google.com > /dev/null
+    if [ $? != 0 ] ; then
+        echo "Cannot reach the internet. Retrying in 5 seconds."
+    else
+        break
+    fi
+    sleep 5
+done
 
 #####
 
