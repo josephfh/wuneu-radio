@@ -38,7 +38,7 @@ if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
     echo
     echo "Enter the network gateway: (e.g. 192.168.1.1)"
     read gateway
-    ech0
+    echo
 elif [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     echo "You are not running this script on a Pi Zero. Exiting."
     exit 2
@@ -1277,7 +1277,7 @@ sudo systemctl mask triggerhappy.service
 sudo apt-get -y remove --purge busybox-syslogd
 sudo apt-get -y remove --purge busybox
 
-if [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
+if [[ "$model" == "Raspberry Pi Zero Rev"* ]] ; then
     sudo apt remove -y --purge dhcpcd5
     sudo apt remove -y --purge ifupdown
     sudo apt remove -y --purge isc-dhcp-client isc-dhcp-common
