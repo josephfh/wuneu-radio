@@ -12,7 +12,7 @@ echo
 echo "Only use this script on a freshly made Raspbian Buster Lite card on your Pi Zero!"
 echo
 
-model=$(cat /proc/device-tree/model 1>&2 /dev/null)
+model=$(cat /proc/device-tree/model)
 echo "This model is $model"
 
 if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
@@ -21,21 +21,55 @@ if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
     echo "The assumption is you want to use the wifi. Networking features will not be disabled by the script so you can"
     echo "SSH in via your desired static IP."
     echo
-    ping -c4 google.com > /dev/null
-    if [ $? != 0 ]
-    then
-        echo "Cannot reach the internet. Please connect to your wifi using the Raspian config."
-        echo "Run: sudo raspi-config"
-        echo
-        exit 2
-    fi
     echo
-    echo "Enter the desired static IP address: (e.g. 192.168.1.249)"
+    echo "Enter your wifi country code: (e.g. SE)"
+    read -p "$wificounty"
+    echo
+    echo "Enter your wifi SSID:)"
+    read -p "$wifissid"
+    echo
+    echo "Enter your wifi pass:"
+    read -p -s "$wifipass"
+    echo
+    echo "Enter the desired static IP address: (e.g. 192.168.1.248)"
     read -p "$ip"
     echo
     echo "Enter the network gateway: (e.g. 192.168.1.1)"
     read -p "$gateway"
     echo
+elif [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
+    echo "You are not running this script on a Pi Zero. Exiting."
+    exit 2
+fi
+
+echo
+echo "Type OK to continue:"
+
+read confirmation </dev/tty
+if [[ $confirmation != "ok" ]] && [[ $confirmation != "OK" ]] ; then
+    echo "You did not type OK. Exiting script."
+    exit 2
+fi
+
+echo "Starting script."
+
+
+if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
+
+    sudo bash -c "cat > /etc/wpa_supplicant/wpa_supplicant.conf" << EOT
+country=$wificountry
+update_config=1
+ctrl_interface=/var/run/wpa_supplicant
+
+network={
+  scan_ssid=1
+  ssid="$wifissid"
+  psk="$wifipass"
+}
+EOT
+
+#####
+
     sudo bash -c "cat > /etc/dhcpcd.conf" << EOT
 # A sample configuration for dhcpcd.
 # See dhcpcd.conf(5) for details.
@@ -85,22 +119,19 @@ static routers=$gateway
 static domain_name_servers=8.8.8.8
 EOT
     sudo systemctl enable ssh
-
-elif [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
-    echo "You are not running this script on a Pi Zero. Exiting."
-    exit 2
+    sudo systemctl daemon-reload
+    sudo systemctl restart dhcpcd
+    sudo wpa_cli -i wlan0 reconfigure
+    sudo systemctl restart networking
 fi
 
-echo
-echo "Type OK to continue:"
-
-read confirmation </dev/tty
-if [[ $confirmation != "ok" ]] && [[ $confirmation != "OK" ]] ; then
-    echo "You did not type OK. Exiting script."
+ping -c4 google.com > /dev/null
+if [ $? != 0 ]
+then
+    echo "Cannot reach the internet. Please check your settings."
+    echo
     exit 2
 fi
-
-echo "Starting script."
 
 #####
 
@@ -369,47 +400,47 @@ sudo bash -c "cat > /usr/share/alsa/alsa.conf" << EOT
 # pre-load the configuration files
 
 @hooks [
-	{
-		func load
-		files [
-			"/etc/alsa/conf.d"
-			"/etc/asound.conf"
-			"~/.asoundrc"
-		]
-		errors false
-	}
+    {
+        func load
+        files [
+            "/etc/alsa/conf.d"
+            "/etc/asound.conf"
+            "~/.asoundrc"
+        ]
+        errors false
+    }
 ]
 
 # load card-specific configuration files (on request)
 
 cards.@hooks [
-	{
-		func load
-		files [
-			{
-				@func concat
-				strings [
-					{ @func datadir }
-					"/cards/aliases.conf"
-				]
-			}
-		]
-	}
-	{
-		func load_for_all_cards
-		files [
-			{
-				@func concat
-				strings [
-					{ @func datadir }
-					"/cards/"
-					{ @func private_string }
-					".conf"
-				]
-			}
-		]
-		errors false
-	}
+    {
+        func load
+        files [
+            {
+                @func concat
+                strings [
+                    { @func datadir }
+                    "/cards/aliases.conf"
+                ]
+            }
+        ]
+    }
+    {
+        func load_for_all_cards
+        files [
+            {
+                @func concat
+                strings [
+                    { @func datadir }
+                    "/cards/"
+                    { @func private_string }
+                    ".conf"
+                ]
+            }
+        ]
+        errors false
+    }
 ]
 
 #
@@ -429,7 +460,7 @@ defaults.pcm.device 0
 defaults.pcm.subdevice -1
 defaults.pcm.nonblock 1
 defaults.pcm.compat 0
-defaults.pcm.minperiodtime 5000		# in us
+defaults.pcm.minperiodtime 5000        # in us
 defaults.pcm.ipc_key 5678293
 defaults.pcm.ipc_gid audio
 defaults.pcm.ipc_perm 0660
@@ -465,8 +496,8 @@ defaults.pcm.iec958.device defaults.pcm.device
 defaults.pcm.modem.card defaults.pcm.card
 defaults.pcm.modem.device defaults.pcm.device
 # truncate files via file or tee PCM
-defaults.pcm.file_format	"raw"
-defaults.pcm.file_truncate	true
+defaults.pcm.file_format    "raw"
+defaults.pcm.file_truncate    true
 defaults.rawmidi.card 0
 defaults.rawmidi.device 0
 defaults.rawmidi.subdevice -1
@@ -506,184 +537,184 @@ pcm.modem cards.pcm.modem
 pcm.phoneline cards.pcm.phoneline
 
 pcm.hw {
-	@args [ CARD DEV SUBDEV ]
-	@args.CARD {
-		type string
-		default {
-			@func getenv
-			vars [
-				ALSA_PCM_CARD
-				ALSA_CARD
-			]
-			default {
-				@func refer
-				name defaults.pcm.card
-			}
-		}
-	}
-	@args.DEV {
-		type integer
-		default {
-			@func igetenv
-			vars [
-				ALSA_PCM_DEVICE
-			]
-			default {
-				@func refer
-				name defaults.pcm.device
-			}
-		}
-	}
-	@args.SUBDEV {
-		type integer
-		default {
-			@func refer
-			name defaults.pcm.subdevice
-		}
-	}
-	type hw
-	card \$CARD
-	device \$DEV
-	subdevice \$SUBDEV
-	hint {
-		show {
-			@func refer
-			name defaults.namehint.extended
-		}
-		description "Direct hardware device without any conversions"
-	}
+    @args [ CARD DEV SUBDEV ]
+    @args.CARD {
+        type string
+        default {
+            @func getenv
+            vars [
+                ALSA_PCM_CARD
+                ALSA_CARD
+            ]
+            default {
+                @func refer
+                name defaults.pcm.card
+            }
+        }
+    }
+    @args.DEV {
+        type integer
+        default {
+            @func igetenv
+            vars [
+                ALSA_PCM_DEVICE
+            ]
+            default {
+                @func refer
+                name defaults.pcm.device
+            }
+        }
+    }
+    @args.SUBDEV {
+        type integer
+        default {
+            @func refer
+            name defaults.pcm.subdevice
+        }
+    }
+    type hw
+    card \$CARD
+    device \$DEV
+    subdevice \$SUBDEV
+    hint {
+        show {
+            @func refer
+            name defaults.namehint.extended
+        }
+        description "Direct hardware device without any conversions"
+    }
 }
 
 pcm.plughw {
-	@args [ CARD DEV SUBDEV ]
-	@args.CARD {
-		type string
-		default {
-			@func getenv
-			vars [
-				ALSA_PCM_CARD
-				ALSA_CARD
-			]
-			default {
-				@func refer
-				name defaults.pcm.card
-			}
-		}
-	}
-	@args.DEV {
-		type integer
-		default {
-			@func igetenv
-			vars [
-				ALSA_PCM_DEVICE
-			]
-			default {
-				@func refer
-				name defaults.pcm.device
-			}
-		}
-	}
-	@args.SUBDEV {
-		type integer
-		default {
-			@func refer
-			name defaults.pcm.subdevice
-		}
-	}
-	type plug
-	slave.pcm {
-		type hw
-		card \$CARD
-		device \$DEV
-		subdevice \$SUBDEV
-	}
-	hint {
-		show {
-			@func refer
-			name defaults.namehint.extended
-		}
-		description "Hardware device with all software conversions"
-	}
+    @args [ CARD DEV SUBDEV ]
+    @args.CARD {
+        type string
+        default {
+            @func getenv
+            vars [
+                ALSA_PCM_CARD
+                ALSA_CARD
+            ]
+            default {
+                @func refer
+                name defaults.pcm.card
+            }
+        }
+    }
+    @args.DEV {
+        type integer
+        default {
+            @func igetenv
+            vars [
+                ALSA_PCM_DEVICE
+            ]
+            default {
+                @func refer
+                name defaults.pcm.device
+            }
+        }
+    }
+    @args.SUBDEV {
+        type integer
+        default {
+            @func refer
+            name defaults.pcm.subdevice
+        }
+    }
+    type plug
+    slave.pcm {
+        type hw
+        card \$CARD
+        device \$DEV
+        subdevice \$SUBDEV
+    }
+    hint {
+        show {
+            @func refer
+            name defaults.namehint.extended
+        }
+        description "Hardware device with all software conversions"
+    }
 }
 
 pcm.plug {
-	@args [ SLAVE ]
-	@args.SLAVE {
-		type string
-	}
-	type plug
-	slave.pcm \$SLAVE
+    @args [ SLAVE ]
+    @args.SLAVE {
+        type string
+    }
+    type plug
+    slave.pcm \$SLAVE
 }
 
 pcm.shm {
-	@args [ SOCKET PCM ]
-	@args.SOCKET {
-		type string
-	}
-	@args.PCM {
-		type string
-	}
-	type shm
-	server \$SOCKET
-	pcm \$PCM
+    @args [ SOCKET PCM ]
+    @args.SOCKET {
+        type string
+    }
+    @args.PCM {
+        type string
+    }
+    type shm
+    server \$SOCKET
+    pcm \$PCM
 }
 
 pcm.tee {
-	@args [ SLAVE FILE FORMAT ]
-	@args.SLAVE {
-		type string
-	}
-	@args.FILE {
-		type string
-	}
-	@args.FORMAT {
-		type string
-		default {
-			@func refer
-			name defaults.pcm.file_format
-		}
-	}
-	type file
-	slave.pcm \$SLAVE
-	file \$FILE
-	format \$FORMAT
-	truncate {
-		@func refer
-		name defaults.pcm.file_truncate
-	}
+    @args [ SLAVE FILE FORMAT ]
+    @args.SLAVE {
+        type string
+    }
+    @args.FILE {
+        type string
+    }
+    @args.FORMAT {
+        type string
+        default {
+            @func refer
+            name defaults.pcm.file_format
+        }
+    }
+    type file
+    slave.pcm \$SLAVE
+    file \$FILE
+    format \$FORMAT
+    truncate {
+        @func refer
+        name defaults.pcm.file_truncate
+    }
 }
 
 pcm.file {
-	@args [ FILE FORMAT ]
-	@args.FILE {
-		type string
-	}
-	@args.FORMAT {
-		type string
-		default {
-			@func refer
-			name defaults.pcm.file_format
-		}
-	}
-	type file
-	slave.pcm null
-	file \$FILE
-	format \$FORMAT
-	truncate {
-		@func refer
-		name defaults.pcm.file_truncate
-	}
+    @args [ FILE FORMAT ]
+    @args.FILE {
+        type string
+    }
+    @args.FORMAT {
+        type string
+        default {
+            @func refer
+            name defaults.pcm.file_format
+        }
+    }
+    type file
+    slave.pcm null
+    file \$FILE
+    format \$FORMAT
+    truncate {
+        @func refer
+        name defaults.pcm.file_truncate
+    }
 }
 
 pcm.null {
-	type null
-	hint {
-		show {
-			@func refer
-			name defaults.namehint.basic
-		}
-		description "Discard all samples (playback) or generate zero samples (capture)"
-	}
+    type null
+    hint {
+        show {
+            @func refer
+            name defaults.namehint.basic
+        }
+        description "Discard all samples (playback) or generate zero samples (capture)"
+    }
 }
 
 #
@@ -691,54 +722,54 @@ pcm.null {
 #
 
 ctl.sysdefault {
-	type hw
-	card {
-		@func getenv
-		vars [
-			ALSA_CTL_CARD
-			ALSA_CARD
-		]
-		default {
-			@func refer
-			name defaults.ctl.card
-		}
-	}
-	hint.description "Default control device"
+    type hw
+    card {
+        @func getenv
+        vars [
+            ALSA_CTL_CARD
+            ALSA_CARD
+        ]
+        default {
+            @func refer
+            name defaults.ctl.card
+        }
+    }
+    hint.description "Default control device"
 }
 ctl.default ctl.sysdefault
 
 ctl.hw {
-	@args [ CARD ]
-	@args.CARD {
-		type string
-		default {
-			@func getenv
-			vars [
-				ALSA_CTL_CARD
-				ALSA_CARD
-			]
-			default {
-				@func refer
-				name defaults.ctl.card
-			}
-		}
-	}
-	type hw
-	card \$CARD
-	hint.description "Direct control device"
+    @args [ CARD ]
+    @args.CARD {
+        type string
+        default {
+            @func getenv
+            vars [
+                ALSA_CTL_CARD
+                ALSA_CARD
+            ]
+            default {
+                @func refer
+                name defaults.ctl.card
+            }
+        }
+    }
+    type hw
+    card \$CARD
+    hint.description "Direct control device"
 }
 
 ctl.shm {
-	@args [ SOCKET CTL ]
-	@args.SOCKET {
-		type string
-	}
-	@args.CTL {
-		type string
-	}
-	type shm
-	server \$SOCKET
-	ctl \$CTL
+    @args [ SOCKET CTL ]
+    @args.SOCKET {
+        type string
+    }
+    @args.CTL {
+        type string
+    }
+    type shm
+    server \$SOCKET
+    ctl \$CTL
 }
 
 #
@@ -746,82 +777,82 @@ ctl.shm {
 #
 
 rawmidi.default {
-	type hw
-	card {
-		@func getenv
-		vars [
-			ALSA_RAWMIDI_CARD
-			ALSA_CARD
-		]
-		default {
-			@func refer
-			name defaults.rawmidi.card
-		}
-	}
-	device {
-		@func igetenv
-		vars [
-			ALSA_RAWMIDI_DEVICE
-		]
-		default {
-			@func refer
-			name defaults.rawmidi.device
-		}
-	}
-	hint.description "Default raw MIDI device"
+    type hw
+    card {
+        @func getenv
+        vars [
+            ALSA_RAWMIDI_CARD
+            ALSA_CARD
+        ]
+        default {
+            @func refer
+            name defaults.rawmidi.card
+        }
+    }
+    device {
+        @func igetenv
+        vars [
+            ALSA_RAWMIDI_DEVICE
+        ]
+        default {
+            @func refer
+            name defaults.rawmidi.device
+        }
+    }
+    hint.description "Default raw MIDI device"
 }
 
 rawmidi.hw {
-	@args [ CARD DEV SUBDEV ]
-	@args.CARD {
-		type string
-		default {
-			@func getenv
-			vars [
-				ALSA_RAWMIDI_CARD
-				ALSA_CARD
-			]
-			default {
-				@func refer
-				name defaults.rawmidi.card
-			}
-		}
-	}
-	@args.DEV {
-		type integer
-		default {
-			@func igetenv
-			vars [
-				ALSA_RAWMIDI_DEVICE
-			]
-			default {
-				@func refer
-				name defaults.rawmidi.device
-			}
-		}
-	}
-	@args.SUBDEV {
-		type integer
-		default -1
-	}
-	type hw
-	card \$CARD
-	device \$DEV
-	subdevice \$SUBDEV
-	hint {
-		description "Direct rawmidi driver device"
-		device \$DEV
-	}
+    @args [ CARD DEV SUBDEV ]
+    @args.CARD {
+        type string
+        default {
+            @func getenv
+            vars [
+                ALSA_RAWMIDI_CARD
+                ALSA_CARD
+            ]
+            default {
+                @func refer
+                name defaults.rawmidi.card
+            }
+        }
+    }
+    @args.DEV {
+        type integer
+        default {
+            @func igetenv
+            vars [
+                ALSA_RAWMIDI_DEVICE
+            ]
+            default {
+                @func refer
+                name defaults.rawmidi.device
+            }
+        }
+    }
+    @args.SUBDEV {
+        type integer
+        default -1
+    }
+    type hw
+    card \$CARD
+    device \$DEV
+    subdevice \$SUBDEV
+    hint {
+        description "Direct rawmidi driver device"
+        device \$DEV
+    }
 }
 
 rawmidi.virtual {
-	@args [ MERGE ]
-	@args.MERGE {
-		type string
-		default 1
-	}
-	type virtual
-	merge \$MERGE
+    @args [ MERGE ]
+    @args.MERGE {
+        type string
+        default 1
+    }
+    type virtual
+    merge \$MERGE
 }
 
 #
@@ -829,12 +860,12 @@ rawmidi.virtual {
 #
 
 seq.default {
-	type hw
-	hint.description "Default sequencer device"
+    type hw
+    hint.description "Default sequencer device"
 }
 
 seq.hw {
-	type hw
+    type hw
 }
 
 #
@@ -842,67 +873,67 @@ seq.hw {
 #
 
 hwdep.default {
-	type hw
-	card {
-		@func getenv
-		vars [
-			ALSA_HWDEP_CARD
-			ALSA_CARD
-		]
-		default {
-			@func refer
-			name defaults.hwdep.card
-		}
-	}
-	device {
-		@func igetenv
-		vars [
-			ALSA_HWDEP_DEVICE
-		]
-		default {
-			@func refer
-			name defaults.hwdep.device
-		}
-	}
-	hint.description "Default hardware dependent device"
+    type hw
+    card {
+        @func getenv
+        vars [
+            ALSA_HWDEP_CARD
+            ALSA_CARD
+        ]
+        default {
+            @func refer
+            name defaults.hwdep.card
+        }
+    }
+    device {
+        @func igetenv
+        vars [
+            ALSA_HWDEP_DEVICE
+        ]
+        default {
+            @func refer
+            name defaults.hwdep.device
+        }
+    }
+    hint.description "Default hardware dependent device"
 }
 
 hwdep.hw {
-	@args [ CARD DEV ]
-	@args.CARD {
-		type string
-		default {
-			@func getenv
-			vars [
-				ALSA_HWDEP_CARD
-				ALSA_CARD
-			]
-			default {
-				@func refer
-				name defaults.hwdep.card
-			}
-		}
-	}
-	@args.DEV {
-		type integer
-		default {
-			@func igetenv
-			vars [
-				ALSA_HWDEP_DEVICE
-			]
-			default {
-				@func refer
-				name defaults.hwdep.device
-			}
-		}
-	}
-	type hw
-	card \$CARD
-	device \$DEV
-	hint {
-		description "Direct hardware dependent device"
-		device \$DEV
-	}
+    @args [ CARD DEV ]
+    @args.CARD {
+        type string
+        default {
+            @func getenv
+            vars [
+                ALSA_HWDEP_CARD
+                ALSA_CARD
+            ]
+            default {
+                @func refer
+                name defaults.hwdep.card
+            }
+        }
+    }
+    @args.DEV {
+        type integer
+        default {
+            @func igetenv
+            vars [
+                ALSA_HWDEP_DEVICE
+            ]
+            default {
+                @func refer
+                name defaults.hwdep.device
+            }
+        }
+    }
+    type hw
+    card \$CARD
+    device \$DEV
+    hint {
+        description "Direct hardware dependent device"
+        device \$DEV
+    }
 }
 
 #
@@ -910,85 +941,85 @@ hwdep.hw {
 #
 
 timer_query.default {
-	type hw
+    type hw
 }
 
 timer_query.hw {
-	type hw
+    type hw
 }
 
 timer.default {
-	type hw
-	class {
-		@func refer
-		name defaults.timer.class
-	}
-	sclass {
-		@func refer
-		name defaults.timer.sclass
-	}
-	card {
-		@func refer
-		name defaults.timer.card
-	}
-	device {
-		@func refer
-		name defaults.timer.device
-	}
-	subdevice {
-		@func refer
-		name defaults.timer.subdevice
-	}
-	hint.description "Default timer device"
+    type hw
+    class {
+        @func refer
+        name defaults.timer.class
+    }
+    sclass {
+        @func refer
+        name defaults.timer.sclass
+    }
+    card {
+        @func refer
+        name defaults.timer.card
+    }
+    device {
+        @func refer
+        name defaults.timer.device
+    }
+    subdevice {
+        @func refer
+        name defaults.timer.subdevice
+    }
+    hint.description "Default timer device"
 }
 
 timer.hw {
-	@args [ CLASS SCLASS CARD DEV SUBDEV ]
-	@args.CLASS {
-		type integer
-		default {
-			@func refer
-			name defaults.timer.class
-		}
-	}
-	@args.SCLASS {
-		type integer
-		default {
-			@func refer
-			name defaults.timer.sclass
-		}
-	}
-	@args.CARD {
-		type string
-		default {
-			@func refer
-			name defaults.timer.card
-		}
-	}
-	@args.DEV {
-		type integer
-		default {
-			@func refer
-			name defaults.timer.device
-		}
-	}
-	@args.SUBDEV {
-		type integer
-		default {
-			@func refer
-			name defaults.timer.subdevice
-		}
-	}
-	type hw
-	class \$CLASS
-	sclass \$SCLASS
-	card \$CARD
-	device \$DEV
-	subdevice \$SUBDEV
-	hint {
-		description "Direct timer device"
-		device \$DEV
-	}
+    @args [ CLASS SCLASS CARD DEV SUBDEV ]
+    @args.CLASS {
+        type integer
+        default {
+            @func refer
+            name defaults.timer.class
+        }
+    }
+    @args.SCLASS {
+        type integer
+        default {
+            @func refer
+            name defaults.timer.sclass
+        }
+    }
+    @args.CARD {
+        type string
+        default {
+            @func refer
+            name defaults.timer.card
+        }
+    }
+    @args.DEV {
+        type integer
+        default {
+            @func refer
+            name defaults.timer.device
+        }
+    }
+    @args.SUBDEV {
+        type integer
+        default {
+            @func refer
+            name defaults.timer.subdevice
+        }
+    }
+    type hw
+    class \$CLASS
+    sclass \$SCLASS
+    card \$CARD
+    device \$DEV
+    subdevice \$SUBDEV
+    hint {
+        description "Direct timer device"
+        device \$DEV
+    }
 }
 EOT
 
@@ -996,111 +1027,111 @@ EOT
 
 sudo bash -c "cat > /var/lib/alsa/asound.state" << EOT
 state.ALSA {
-	control.1 {
-		iface MIXER
-		name 'PCM Playback Volume'
-		value -2000
-		comment {
-			access 'read write'
-			type INTEGER
-			count 1
-			range '-10239 - 400'
-			dbmin -9999999
-			dbmax 400
-			dbvalue.0 -2000
-		}
-	}
-	control.2 {
-		iface MIXER
-		name 'PCM Playback Switch'
-		value true
-		comment {
-			access 'read write'
-			type BOOLEAN
-			count 1
-		}
-	}
-	control.3 {
-		iface MIXER
-		name 'PCM Playback Route'
-		value 0
-		comment {
-			access 'read write'
-			type INTEGER
-			count 1
-			range '0 - 3'
-		}
-	}
-	control.4 {
-		iface PCM
-		name 'IEC958 Playback Default'
-		value '0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
-		comment {
-			access 'read write'
-			type IEC958
-			count 1
-		}
-	}
-	control.5 {
-		iface PCM
-		name 'IEC958 Playback Con Mask'
-		value '0200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
-		comment {
-			access read
-			type IEC958
-			count 1
-		}
-	}
+    control.1 {
+        iface MIXER
+        name 'PCM Playback Volume'
+        value -2000
+        comment {
+            access 'read write'
+            type INTEGER
+            count 1
+            range '-10239 - 400'
+            dbmin -9999999
+            dbmax 400
+            dbvalue.0 -2000
+        }
+    }
+    control.2 {
+        iface MIXER
+        name 'PCM Playback Switch'
+        value true
+        comment {
+            access 'read write'
+            type BOOLEAN
+            count 1
+        }
+    }
+    control.3 {
+        iface MIXER
+        name 'PCM Playback Route'
+        value 0
+        comment {
+            access 'read write'
+            type INTEGER
+            count 1
+            range '0 - 3'
+        }
+    }
+    control.4 {
+        iface PCM
+        name 'IEC958 Playback Default'
+        value '0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+        comment {
+            access 'read write'
+            type IEC958
+            count 1
+        }
+    }
+    control.5 {
+        iface PCM
+        name 'IEC958 Playback Con Mask'
+        value '0200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+        comment {
+            access read
+            type IEC958
+            count 1
+        }
+    }
 }
 state.DAC {
-	control.1 {
-		iface PCM
-		name 'Playback Channel Map'
-		value.0 0
-		value.1 0
-		comment {
-			access read
-			type INTEGER
-			count 2
-			range '0 - 36'
-		}
-	}
-	control.2 {
-		iface MIXER
-		name 'PCM Playback Switch'
-		value true
-		comment {
-			access 'read write'
-			type BOOLEAN
-			count 1
-		}
-	}
-	control.3 {
-		iface MIXER
-		name 'PCM Playback Volume'
-		value.0 64
-		value.1 64
-		comment {
-			access 'read write'
-			type INTEGER
-			count 2
-			range '0 - 64'
-			dbmin -6400
-			dbmax 0
-			dbvalue.0 0
-			dbvalue.1 0
-		}
-	}
-	control.4 {
-		iface CARD
-		name 'Keep Interface'
-		value false
-		comment {
-			access 'read write'
-			type BOOLEAN
-			count 1
-		}
-	}
+    control.1 {
+        iface PCM
+        name 'Playback Channel Map'
+        value.0 0
+        value.1 0
+        comment {
+            access read
+            type INTEGER
+            count 2
+            range '0 - 36'
+        }
+    }
+    control.2 {
+        iface MIXER
+        name 'PCM Playback Switch'
+        value true
+        comment {
+            access 'read write'
+            type BOOLEAN
+            count 1
+        }
+    }
+    control.3 {
+        iface MIXER
+        name 'PCM Playback Volume'
+        value.0 64
+        value.1 64
+        comment {
+            access 'read write'
+            type INTEGER
+            count 2
+            range '0 - 64'
+            dbmin -6400
+            dbmax 0
+            dbvalue.0 0
+            dbvalue.1 0
+        }
+    }
+    control.4 {
+        iface CARD
+        name 'Keep Interface'
+        value false
+        comment {
+            access 'read write'
+            type BOOLEAN
+            count 1
+        }
+    }
 }
 EOT
 
@@ -1197,19 +1228,19 @@ if ! [ -n "\${SUDO_USER}" -a -n "\${SUDO_PS1}" ]; then
   PS1='\${debian_chroot:+(\$debian_chroot)}\u@\h:\w\\$ '
 fi
 if [ -x /usr/lib/command-not-found -o -x /usr/share/command-not-found/command-not-found ]; then
-	function command_not_found_handle {
-	        # check because c-n-f could've been removed in the meantime
+    function command_not_found_handle {
+            # check because c-n-f could've been removed in the meantime
                 if [ -x /usr/lib/command-not-found ]; then
-		   /usr/lib/command-not-found -- "\$1"
+           /usr/lib/command-not-found -- "\$1"
                    return \$?
                 elif [ -x /usr/share/command-not-found/command-not-found ]; then
-		   /usr/share/command-not-found/command-not-found -- "\$1"
+           /usr/share/command-not-found/command-not-found -- "\$1"
                    return \$?
-		else
-		   printf "%s: command not found\n" "\$1" >&2
-		   return 127
-		fi
-	}
+        else
+           printf "%s: command not found\n" "\$1" >&2
+           return 127
+        fi
+    }
 fi
 set_bash_prompt() {
     fs_mode=\$(mount | sed -n -e "s/^\/dev\/.* on \/ .*(\(r[w|o]\).*/\1/p")
@@ -1232,8 +1263,6 @@ EOT
 sudo systemctl mask apt-daily.service
 sudo systemctl mask avahi-daemon.service
 sudo systemctl mask dphys-swapfile.service
-sudo systemctl mask hciuart.service
-sudo systemctl mask keyboard-setup.service
 sudo systemctl mask serial-getty@ttyAMA0.service
 sudo systemctl mask systemd-journal-flush.service
 sudo systemctl mask systemd-journald.service
@@ -1248,6 +1277,8 @@ if [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     sudo apt remove -y --purge isc-dhcp-client isc-dhcp-common
     sudo systemctl mask console-setup.service
     sudo systemctl mask dhcpcd.service
+    sudo systemctl mask hciuart.service
+    sudo systemctl mask keyboard-setup.service
     sudo systemctl mask networking.service
     sudo systemctl mask ntp.service
     sudo systemctl mask raspi-config.service
