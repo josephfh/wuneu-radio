@@ -1292,6 +1292,7 @@ if [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     sudo systemctl mask systemd-timesyncd.service
     sudo systemctl mask wifi-country.service
 else
+    hostname wuneuradio
     echo
     echo "From your computer run:"
     echo "ssh-copy-id pi@$ip"
