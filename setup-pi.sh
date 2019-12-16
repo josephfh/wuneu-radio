@@ -21,16 +21,18 @@ if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
     echo "The assumption is you want to use the wifi. Networking features will not be disabled by the script so you can"
     echo "SSH in via your desired static IP."
     echo
-    echo
-    echo "Enter your wifi country code: (e.g. SE)"
-    read -p "$wificounty"
-    echo
-    echo "Enter your wifi SSID:)"
-    read -p "$wifissid"
-    echo
-    echo "Enter your wifi pass:"
-    read -p -s "$wifipass"
-    echo
+    # echo
+    # echo "Enter your wifi country code: (e.g. SE)"
+    # read -p "$wificounty"
+    # echo
+    # echo "Enter your wifi SSID:)"
+    # read -p "$wifissid"
+    # echo
+    # set +o history
+    # echo "Enter your wifi pass:"
+    # read -p "$wifipass"
+    # set -o history
+    # echo
     echo "Enter the desired static IP address: (e.g. 192.168.1.248)"
     read -p "$ip"
     echo
@@ -56,17 +58,17 @@ echo "Starting script."
 
 if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
 
-    sudo bash -c "cat > /etc/wpa_supplicant/wpa_supplicant.conf" << EOT
-country=$wificountry
-update_config=1
-ctrl_interface=/var/run/wpa_supplicant
+#     sudo bash -c "cat > /etc/wpa_supplicant/wpa_supplicant.conf" << EOT
+# country=$wificountry
+# update_config=1
+# ctrl_interface=/var/run/wpa_supplicant
 
-network={
-  scan_ssid=1
-  ssid="$wifissid"
-  psk="$wifipass"
-}
-EOT
+# network={
+#   scan_ssid=1
+#   ssid="$wifissid"
+#   psk="$wifipass"
+# }
+# EOT
 
 #####
 
