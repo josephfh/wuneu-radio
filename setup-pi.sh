@@ -116,10 +116,13 @@ require dhcp_server_identifier
 slaac private
 
 interface wlan0
-static ip_address=$ip
-static routers=$gateway
+EOT
+    sudo echo "static ip_address=$ip" > /etc/dhcpcd.conf
+    sudo echo "static routers=$gateway"> /etc/dhcpcd.conf
+    sudo bash -c "cat > /etc/dhcpcd.conf" << EOT
 static domain_name_servers=8.8.8.8
 EOT
+
     sudo systemctl enable ssh
     sudo systemctl daemon-reload
     sudo systemctl restart dhcpcd
