@@ -34,11 +34,11 @@ if [[ "$model" == "Raspberry Pi Zero W Rev"* ]] ; then
     # set -o history
     # echo
     echo "Enter the desired static IP address: (e.g. 192.168.1.248)"
-    read -p "$ip"
+    read ip
     echo
     echo "Enter the network gateway: (e.g. 192.168.1.1)"
-    read -p "$gateway"
-    echo
+    read gateway
+    ech0
 elif [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     echo "You are not running this script on a Pi Zero. Exiting."
     exit 2
@@ -117,11 +117,9 @@ slaac private
 
 interface wlan0
 EOT
-    sudo echo "static ip_address=$ip" > /etc/dhcpcd.conf
-    sudo echo "static routers=$gateway"> /etc/dhcpcd.conf
-    sudo bash -c "cat > /etc/dhcpcd.conf" << EOT
-static domain_name_servers=8.8.8.8
-EOT
+    sudo echo "static ip_address=$ip" >> /etc/dhcpcd.conf
+    sudo echo "static routers=$gateway" >> /etc/dhcpcd.conf
+    sudo echo "static domain_name_servers=$gateway" >> /etc/dhcpcd.conf
 
     sudo systemctl enable ssh
     sudo systemctl daemon-reload
@@ -1295,7 +1293,10 @@ if [[ "$model" != "Raspberry Pi Zero Rev"* ]] ; then
     sudo systemctl mask systemd-timesyncd.service
     sudo systemctl mask wifi-country.service
 else
-    hostname wuneuradio
+    iplast=`echo $ip | cut -d . -f 4`
+    sudo hostname wuneu-radio-$iplast
+    passwd
+    sudo passwd
     echo
     echo "From your computer run:"
     echo "ssh-copy-id pi@$ip"
