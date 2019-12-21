@@ -197,7 +197,7 @@ def random_playlist(stream, prepend_silence=False):
         if ( prepend_silence == True ):
             list_with_silence_padding='/tmp/' + stream + '.m3u'
             with open(list_with_silence_padding,'w') as out:
-                out.write("/home/pi/wuneu-radio/sounds/silence.wav")
+                out.write("/home/pi/wuneu-radio/sounds/silence.wav\n")
             os.system('cat ' +  list + ' >> ' + list_with_silence_padding)
             return list_with_silence_padding
         else:
