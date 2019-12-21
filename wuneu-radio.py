@@ -262,6 +262,11 @@ def run_every_30_seconds():
         print('Error: active stream time postion has not been updated in 2 minutes. Restarting.')
         quit()
 
+def run_every_day():
+    threading.Timer(86400.0, run_every_day).start()
+    if (lights_on == True):
+        static_load()
+
 def startup():
     global lights_on
     global song_count
@@ -349,7 +354,7 @@ def static_load():
 
 def static_playlist():
     with open('/tmp/static.m3u','w') as out:
-        out.write((static_file + "\n")*2)
+        out.write((static_file + "\n")*25)
 
 def set_current_stream(stream):
     if (debug_mode == True):
@@ -403,6 +408,7 @@ def main():
     run_every_30_seconds()
     run_every_58_minutes()
     run_every_28_minutes()
+    run_every_day()
 
     with gpiod.Chip('gpiochip0') as chip:
         lines=chip.get_lines(gpio_offsets)
