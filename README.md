@@ -1,6 +1,6 @@
 # Wuneu Radio
 
-*NOTE: This is still being tested and I'm still writing the install script. Don't exepect this to work.*
+*NOTE: This is a personal hobby project, so please treat it as an early alpha and don't fry your pi or your antique radios*
 
 ## Quick start
 
